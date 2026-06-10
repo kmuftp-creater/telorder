@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電話號碼排序清理器 | Phone Number Sorter & Cleaner</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter & Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#4A90E2',    // 品牌藍
+                            success: '#5AC8A5',    // 成功
+                            error: '#F06292',      // 錯誤
+                            warning: '#FFB74D',    // 警告
+                            info: '#4FC3F7',       // 資訊
+                            
+                            // Light Mode Colors
+                            bg: '#F5F7FA',         // 頁面底色
+                            card: '#FFFFFF',       // 純白卡片
+                            text: '#333333',       // 主要文字
+                            sub: '#666666',        // 次要文字
+                            border: '#E0E0E0',     // 邊框
+                            
+                            // Dark Mode Colors
+                            darkBg: '#121212',
+                            darkCard: '#1E1E1E',
+                            darkText: '#E0E0E0',
+                            darkSub: '#9CA3AF',
+                            darkBorder: '#333333',
+                            darkInput: '#2A2A2A'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 8px 30px -4px rgba(0, 0, 0, 0.05)',
+                        'soft-dark': '0 8px 30px -4px rgba(0, 0, 0, 0.3)',
+                    },
+                    borderRadius: {
+                        'comp': '8px',   // 按鈕/輸入框 8px
+                        'card': '12px',  // 卡片 12px
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            /* Let Tailwind handle the background via React Root */
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* Custom Scrollbar for Textareas */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .dark textarea::-webkit-scrollbar-thumb {
+            background: #4b5563; 
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .dark textarea::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; 
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Icons Components ---
+        const IconUpload = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+        const IconTrash = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+        const IconArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>;
+        const IconCopy = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+        const IconDownload = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+        const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+        const IconPhone = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
+        const IconSun = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>;
+        const IconMoon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+
+        // --- Toast Component ---
+        const Toast = ({ message, type, onClose }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 3000);
+                return () => clearTimeout(timer);
+            }, [onClose]);
+
+            const bgColors = {
+                success: 'bg-brand-success',
+                error: 'bg-brand-error',
+                warning: 'bg-brand-warning',
+                info: 'bg-brand-info'
+            };
+
+            return (
+                <div className={`fixed bottom-5 right-5 ${bgColors[type] || bgColors.info} text-white px-6 py-3 rounded-comp shadow-soft flex items-center gap-2 animate-fade-in z-50`}>
+                    {type === 'success' && <IconCheck />}
+                    <span className="font-medium text-sm md:text-base">{message}</span>
+                </div>
+            );
+        };
+
+        // --- Main App Component ---
+        const App = () => {
+            // Theme State (預設暗色)
+            const [isDarkMode, setIsDarkMode] = useState(true);
+
+            useEffect(() => {
+                if (isDarkMode) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }, [isDarkMode]);
+
+            // Data State
+            const [rawText, setRawText] = useState("");
+            const [cleanedText, setCleanedText] = useState("");
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [toast, setToast] = useState(null);
+            const fileInputRef = useRef(null);
+
+            // Settings State
+            const [processMode, setProcessMode] = useState("extract"); // extract, remove_empty
+            const [prefixMode, setPrefixMode] = useState("zero"); // none, zero, plus886
+            const [sortMode, setSortMode] = useState("asc"); // none, asc, desc
+            const [removeDuplicates, setRemoveDuplicates] = useState(true);
+
+            // Helpers
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+            };
+
+            const handleFileChange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (file.size > 5 * 1024 * 1024) { 
+                    showToast("檔案過大，請上傳小於 5MB 的檔案", "error");
+                    return;
+                }
+
+                if (file.type !== "text/plain") {
+                    showToast("目前僅支援 .txt 格式，其他格式請直接複製貼上", "warning");
+                }
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    setRawText(event.target.result);
+                    showToast("檔案讀取成功", "success");
+                };
+                reader.onerror = () => {
+                    showToast("讀取檔案失敗", "error");
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+
+            const handleClean = () => {
+                if (!rawText.trim()) {
+                    showToast("請先輸入號碼或上傳檔案", "error");
+                    return;
+                }
+
+                setIsProcessing(true);
+
+                setTimeout(() => {
+                    let resultText = "";
+
+                    if (processMode === 'extract') {
+                        let items = rawText.split(/[\r\n,;\t\s]+/);
+
+                        let processed = items.map(item => {
+                            let clean = item.replace(/[^\d+]/g, '');
+                            if (!clean) return null;
+
+                            let base = clean;
+                            if (base.startsWith('+886')) base = base.substring(4);
+                            else if (base.startsWith('886')) base = base.substring(3);
+                            else if (base.startsWith('0')) base = base.substring(1);
+
+                            if (prefixMode === 'zero') return '0' + base;
+                            else if (prefixMode === 'plus886') return '+886' + base;
+                            else return clean;
+                        }).filter(Boolean);
+
+                        if (removeDuplicates) {
+                            processed = [...new Set(processed)];
+                        }
+
+                        if (sortMode === 'asc') processed.sort();
+                        else if (sortMode === 'desc') processed.sort().reverse();
+
+                        resultText = processed.join('\n');
+                    } else {
+                        let lines = rawText.split(/\r?\n/);
+                        let processed = lines.map(line => {
+                            if (!line.trim()) return null; 
+                            
+                            if (prefixMode !== 'none') {
+                                let clean = line.replace(/[^\d+]/g, '');
+                                if (clean.length >= 8 && clean.length <= 15) {
+                                    let base = clean;
+                                    if (base.startsWith('+886')) base = base.substring(4);
+                                    else if (base.startsWith('886')) base = base.substring(3);
+                                    else if (base.startsWith('0')) base = base.substring(1);
+                                    
+                                    if (prefixMode === 'zero') return '0' + base;
+                                    else if (prefixMode === 'plus886') return '+886' + base;
+                                }
+                            }
+                            
+                            return line.trim();
+                        }).filter(Boolean);
+
+                        resultText = processed.join('\n');
+                    }
+
+                    setCleanedText(resultText);
+                    setIsProcessing(false);
+                    showToast("處理完成！", "success");
+                }, 500); 
+            };
+
+            const handleClear = () => {
+                setRawText("");
+                setCleanedText("");
+                showToast("已清除全部內容", "info");
+            };
+
+            const handleCopy = () => {
+                if (!cleanedText) return;
+                
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = cleanedText;
+                    textArea.style.position = "fixed";
+                    textArea.style.top = "0";
+                    textArea.style.left = "0";
+                    textArea.style.opacity = "0";
+                    
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    if (successful) showToast("已複製到剪貼簿", "success");
+                    else showToast("複製失敗，請手動複製", "error");
+                } catch (err) {
+                    showToast("複製失敗，請手動複製", "error");
+                }
+            };
+
+            const handleDownload = () => {
+                if (!cleanedText) return;
+                
+                const blob = new Blob([cleanedText], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                
+                const now = new Date();
+                const timestamp = now.toISOString().replace(/[-:T]/g, "").slice(0, 14); 
+                const filename = `phone_numbers_${timestamp}.txt`;
+                
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showToast("下載已開始", "success");
+            };
+
+            const rawCount = rawText.trim() ? rawText.trim().split(/[\r\n,;\t\s]+/).filter(Boolean).length : 0;
+            const cleanedCount = cleanedText.trim() ? cleanedText.trim().split(/[\r\n]+/).filter(Boolean).length : 0;
+
+            return (
+                <div className="min-h-screen font-sans bg-brand-bg dark:bg-brand-darkBg text-brand-text dark:text-brand-darkText transition-colors duration-300 flex flex-col">
+                    
+                    {/* Header */}
+                    <header className="bg-brand-card dark:bg-brand-darkCard border-b border-brand-border dark:border-brand-darkBorder py-4 px-6 md:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm transition-colors duration-300">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-brand-primary/10 p-2 rounded-comp text-brand-primary">
+                                <IconPhone />
+                            </div>
+                            <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+                                電話號碼排序清理器
+                            </h1>
+                        </div>
+                        
+                        {/* Theme Toggle */}
+                        <button 
+                            onClick={() => setIsDarkMode(!isDarkMode)}
+                            className="p-2 rounded-comp bg-brand-bg dark:bg-brand-darkInput hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-brand-border dark:border-brand-darkBorder shadow-sm flex items-center justify-center"
+                            title={isDarkMode ? "切換至亮色模式" : "切換至暗色模式"}
+                        >
+                            {isDarkMode ? (
+                                <span className="text-yellow-400"><IconSun /></span>
+                            ) : (
+                                <span className="text-brand-sub"><IconMoon /></span>
+                            )}
+                        </button>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-[1fr,auto,1fr] gap-6 items-stretch">
+                        
+                        {/* LEFT: Input Card */}
+                        <section className="flex flex-col h-full">
+                            <div className="bg-brand-card dark:bg-brand-darkCard rounded-card shadow-soft dark:shadow-soft-dark border border-brand-border dark:border-brand-darkBorder h-full flex flex-col overflow-hidden transition-colors duration-300">
+                                <div className="p-5 border-b border-brand-border dark:border-brand-darkBorder flex justify-between items-center bg-gray-50/50 dark:bg-brand-darkInput/30">
+                                    <h2 className="font-bold text-lg">原始號碼清單</h2>
+                                    <span className="text-xs font-medium text-brand-sub dark:text-brand-darkSub bg-brand-bg dark:bg-brand-darkInput px-2 py-1 rounded">
+                                        共 {rawCount.toLocaleString()} 筆
+                                    </span>
+                                </div>
+                                
+                                <div className="p-5 flex-1 flex flex-col gap-4">
+                                    {/* Upload Area */}
+                                    <div 
+                                        className="border-2 border-dashed border-brand-primary/30 dark:border-brand-primary/50 hover:border-brand-primary/80 bg-brand-primary/5 dark:bg-brand-primary/10 transition-all rounded-comp p-4 flex flex-col items-center justify-center cursor-pointer group text-center"
+                                        onClick={() => fileInputRef.current.click()}
+                                    >
+                                        <input 
+                                            type="file" 
+                                            ref={fileInputRef} 
+                                            className="hidden" 
+                                            accept=".txt"
+                                            onChange={handleFileChange}
+                                        />
+                                        <div className="text-brand-primary mb-1 group-hover:scale-110 transition-transform">
+                                            <IconUpload />
+                                        </div>
+                                        <p className="text-sm font-medium">點擊上傳或拖曳檔案</p>
+                                        <p className="text-xs text-brand-sub dark:text-brand-darkSub mt-1">支援 .txt (Max 5MB)</p>
+                                    </div>
+
+                                    {/* Text Area */}
+                                    <textarea
+                                        className="flex-1 w-full p-4 border border-brand-border dark:border-brand-darkBorder bg-transparent dark:bg-brand-darkInput rounded-comp focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary outline-none transition-all resize-none text-base leading-relaxed placeholder-gray-400 dark:placeholder-gray-500"
+                                        placeholder="請在此貼上電話號碼清單 (支援換行、空格或逗號分隔)...&#10;例如：&#10;0912345678&#10;+886911222333&#10;02-2345-6789"
+                                        value={rawText}
+                                        onChange={(e) => setRawText(e.target.value)}
+                                    ></textarea>
+
+                                    {/* Settings Panel */}
+                                    <div className="bg-brand-bg dark:bg-brand-darkInput p-4 rounded-comp border border-brand-border dark:border-brand-darkBorder space-y-4">
+                                        
+                                        {/* Process Mode Setting */}
+                                        <div>
+                                            <label className="text-sm font-semibold block mb-2">處理模式</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <label className={`cursor-pointer border rounded-comp p-2 text-center text-sm transition-all ${processMode === 'extract' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold' : 'bg-brand-card dark:bg-brand-darkCard border-brand-border dark:border-brand-darkBorder text-brand-sub dark:text-brand-darkSub hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <input type="radio" name="processMode" className="hidden" checked={processMode === 'extract'} onChange={() => setProcessMode('extract')} />
+                                                    智慧提取與排序
+                                                </label>
+                                                <label className={`cursor-pointer border rounded-comp p-2 text-center text-sm transition-all ${processMode === 'remove_empty' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold' : 'bg-brand-card dark:bg-brand-darkCard border-brand-border dark:border-brand-darkBorder text-brand-sub dark:text-brand-darkSub hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <input type="radio" name="processMode" className="hidden" checked={processMode === 'remove_empty'} onChange={() => setProcessMode('remove_empty')} />
+                                                    僅移除空行
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {/* Prefix Setting */}
+                                        <div className="border-t border-brand-border dark:border-brand-darkBorder pt-3">
+                                            <label className="text-sm font-semibold block mb-2">前綴處理模式</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <label className={`cursor-pointer border rounded-comp p-2 text-center text-sm transition-all ${prefixMode === 'zero' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold' : 'bg-brand-card dark:bg-brand-darkCard border-brand-border dark:border-brand-darkBorder text-brand-sub dark:text-brand-darkSub hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <input type="radio" name="prefix" className="hidden" checked={prefixMode === 'zero'} onChange={() => setPrefixMode('zero')} />
+                                                    強制補 0
+                                                </label>
+                                                <label className={`cursor-pointer border rounded-comp p-2 text-center text-sm transition-all ${prefixMode === 'plus886' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold' : 'bg-brand-card dark:bg-brand-darkCard border-brand-border dark:border-brand-darkBorder text-brand-sub dark:text-brand-darkSub hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <input type="radio" name="prefix" className="hidden" checked={prefixMode === 'plus886'} onChange={() => setPrefixMode('plus886')} />
+                                                    強制補 +886
+                                                </label>
+                                                <label className={`cursor-pointer border rounded-comp p-2 text-center text-sm transition-all ${prefixMode === 'none' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold' : 'bg-brand-card dark:bg-brand-darkCard border-brand-border dark:border-brand-darkBorder text-brand-sub dark:text-brand-darkSub hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                    <input type="radio" name="prefix" className="hidden" checked={prefixMode === 'none'} onChange={() => setPrefixMode('none')} />
+                                                    不修改
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {/* Other Settings */}
+                                        <div className={`grid grid-cols-2 gap-4 border-t border-brand-border dark:border-brand-darkBorder pt-3 transition-opacity ${processMode === 'remove_empty' ? 'opacity-40 pointer-events-none' : ''}`}>
+                                            <div>
+                                                <label className="text-sm font-semibold block mb-2">排序方式</label>
+                                                <select 
+                                                    className="w-full text-sm border-brand-border dark:border-brand-darkBorder rounded-comp p-1.5 focus:ring-brand-primary focus:border-brand-primary bg-brand-card dark:bg-brand-darkCard text-brand-text dark:text-brand-darkText"
+                                                    value={sortMode}
+                                                    onChange={(e) => setSortMode(e.target.value)}
+                                                >
+                                                    <option value="asc">升冪排序 (A-Z)</option>
+                                                    <option value="desc">降冪排序 (Z-A)</option>
+                                                    <option value="none">不排序 (保持原順序)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-semibold block mb-2">進階選項</label>
+                                                <label className="flex items-center gap-2 cursor-pointer text-sm text-brand-sub dark:text-brand-darkSub hover:text-brand-primary transition-colors">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="rounded text-brand-primary focus:ring-brand-primary bg-brand-card dark:bg-brand-darkCard border-brand-border dark:border-brand-darkBorder"
+                                                        checked={removeDuplicates}
+                                                        onChange={(e) => setRemoveDuplicates(e.target.checked)}
+                                                    />
+                                                    自動移除重複號碼
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* MIDDLE: Actions */}
+                        <section className="flex lg:flex-col justify-center gap-4 py-2 lg:py-20 z-10">
+                            <button
+                                onClick={handleClean}
+                                disabled={isProcessing || !rawText}
+                                className={`
+                                    flex items-center justify-center gap-2 px-8 py-4 rounded-full font-bold text-lg shadow-soft transition-all transform hover:-translate-y-1 active:translate-y-0
+                                    ${isProcessing || !rawText 
+                                        ? 'bg-brand-border dark:bg-brand-darkBorder text-gray-500 cursor-not-allowed shadow-none' 
+                                        : 'bg-brand-primary text-white hover:bg-blue-600 hover:shadow-lg'}
+                                `}
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                        <span>處理中...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>處理並輸出</span>
+                                        <IconArrowRight />
+                                    </>
+                                )}
+                            </button>
+
+                            <button
+                                onClick={handleClear}
+                                className="flex items-center justify-center gap-2 px-6 py-3 rounded-full text-brand-sub dark:text-brand-darkSub hover:text-brand-error hover:bg-brand-error/10 transition-colors font-medium border border-transparent hover:border-brand-error/20"
+                            >
+                                <IconTrash />
+                                <span>清除全部</span>
+                            </button>
+                        </section>
+
+                        {/* RIGHT: Output Card */}
+                        <section className="flex flex-col h-full">
+                            <div className="bg-brand-card dark:bg-brand-darkCard rounded-card shadow-soft dark:shadow-soft-dark border border-brand-border dark:border-brand-darkBorder h-full flex flex-col overflow-hidden relative transition-colors duration-300">
+                                <div className="p-5 border-b border-brand-border dark:border-brand-darkBorder flex justify-between items-center bg-gray-50/50 dark:bg-brand-darkInput/30">
+                                    <h2 className="font-bold text-lg">處理結果</h2>
+                                    <div className="flex items-center gap-2">
+                                        {cleanedText && (
+                                            <span className="text-xs font-medium text-brand-success bg-brand-success/10 px-2 py-1 rounded-comp animate-fade-in">
+                                                已完成
+                                            </span>
+                                        )}
+                                        <span className="text-xs font-medium text-brand-sub dark:text-brand-darkSub bg-brand-bg dark:bg-brand-darkInput px-2 py-1 rounded">
+                                            共 {cleanedCount.toLocaleString()} 筆
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="p-5 flex-1 flex flex-col relative">
+                                    <textarea
+                                        readOnly
+                                        className="flex-1 w-full p-4 border border-brand-border dark:border-brand-darkBorder bg-brand-bg dark:bg-brand-darkInput rounded-comp focus:outline-none resize-none text-base leading-relaxed placeholder-gray-400 dark:placeholder-gray-500"
+                                        placeholder="清理後的號碼將顯示於此..."
+                                        value={cleanedText}
+                                    ></textarea>
+                                </div>
+
+                                {/* Output Actions Toolbar */}
+                                <div className="p-5 pt-0 flex flex-wrap gap-3 justify-end">
+                                    <button
+                                        onClick={handleCopy}
+                                        disabled={!cleanedText}
+                                        className={`
+                                            flex items-center gap-2 px-4 py-2 rounded-comp font-medium border transition-all
+                                            ${!cleanedText
+                                                ? 'border-brand-border dark:border-brand-darkBorder text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                                : 'border-brand-primary text-brand-primary hover:bg-brand-primary/5 active:bg-brand-primary/10'}
+                                        `}
+                                    >
+                                        <IconCopy />
+                                        <span>複製號碼</span>
+                                    </button>
+
+                                    <button
+                                        onClick={handleDownload}
+                                        disabled={!cleanedText}
+                                        className={`
+                                            flex items-center gap-2 px-4 py-2 rounded-comp font-medium shadow-sm transition-all
+                                            ${!cleanedText
+                                                ? 'bg-brand-border dark:bg-brand-darkBorder text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                                : 'bg-brand-primary text-white hover:bg-blue-600 hover:shadow-md'}
+                                        `}
+                                    >
+                                        <IconDownload />
+                                        <span>下載名單 (.txt)</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="py-6 text-center text-brand-sub dark:text-brand-darkSub text-sm border-t border-brand-border dark:border-brand-darkBorder mt-auto bg-brand-card dark:bg-brand-darkCard transition-colors duration-300">
+                        <p>v0.0.6 | &copy;2026 <a href="https://huobest.com/" target="_blank" className="text-brand-primary hover:underline font-medium">霍家私塾</a></p>
+                    </footer>
+
+                    {/* Toast Notification */}
+                    {toast && (
+                        <Toast 
+                            message={toast.message} 
+                            type={toast.type} 
+                            onClose={() => setToast(null)} 
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
